@@ -4,14 +4,14 @@
 
 ## 安装包
 
-[下载已签名 APK：v0.1.0](https://github.com/Evilnanan/leigod-auto-pause/raw/refs/heads/feat/android-token-app/android/downloads/leigod-token-helper-v0.1.0.apk)
+[下载已签名 APK：v0.1.1](https://github.com/Evilnanan/leigod-auto-pause/raw/refs/heads/feat/android-token-app/android/downloads/leigod-token-helper-v0.1.1.apk)
 
 安装时如系统询问，请允许当前浏览器安装应用。安装包与 [SHA256SUMS.txt](downloads/SHA256SUMS.txt) 一同保存在本分支 `android/downloads/` 目录，发布包关闭调试。源码和包内均不包含用户的账号、密码、token 或私钥。
 
 ## 使用
 
-1. 安装 APK，打开 App，在下方雷神官网点击 **我的奖励** 唤起登录窗口。
-2. 手动登录并完成验证码。App 使用桌面版官网，并会自动检测登录后的 token。
+1. 安装 APK，打开 App，在下方雷神官网主页打开登录窗口。
+2. 手动登录并完成验证码。App 使用桌面版官网，并会自动检测登录后的 token。登录框已适配手机宽度，内容过长时可以上下滚动；网页上方的 **− / + / 适应 / 全屏** 按钮用于调整显示。
 3. 顶部显示登录验证结果。点击 **复制 Token**。
 4. 点击 **打开 GitHub Secret 设置**，在浏览器登录 GitHub，更新 `LEIGOD_TOKENS` 并保存。
 5. 可以运行仓库里的 **检查雷神 Token（只读）** 验证更新结果。
@@ -21,6 +21,13 @@
 此 App 的登录状态独立于 Edge、Chrome 和雷神 App，首次需要在 App 内登录。登录后官网数据保存在本机 App 的 WebView 中，下次可继续使用；有效期以雷神服务端为准，提取 token 不会自动续期。
 
 App 不会自动修改 GitHub Secret，也不会暂停或恢复时长。清除本机登录记录仅删除 App 内的官网数据，不修改 GitHub Secret。
+
+## v0.1.1 更新
+
+- 默认入口改为官网主页 `https://www.leigod.com/`，不依赖活动页面。
+- 修复官网固定 860px 登录窗口被裁切的问题，手机号、验证码和发送按钮适配手机宽度。
+- 解除官网的禁止缩放设置；登录窗口可竖向滚动，输入框可随键盘调整位置。
+- 新增网页缩放、适应和全屏按钮。使用相同签名，可直接覆盖安装 v0.1.0，无需卸载或清除登录记录。
 
 ## 数据与权限
 

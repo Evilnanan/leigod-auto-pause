@@ -1,0 +1,24 @@
+<!doctype html><html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=0">
+<style>
+body{margin:0;min-width:1200px;background:#eee;font:16px sans-serif}
+.leigod-modal-mask{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0009}
+.leigod-modal{width:860px;height:480px;min-width:400px;background:#222;color:white;border-radius:8px}
+.leigod-modal-body{height:100%;overflow:hidden}
+.login-modal{display:flex;height:480px}
+.qr-panel{flex:1;min-width:380px}
+.login-modal-content{position:relative;width:480px;height:480px;padding:60px 80px;box-sizing:border-box}
+label{display:block;margin-bottom:10px}input{height:40px;width:100%;box-sizing:border-box}
+.field{margin-bottom:24px}.sms-field{position:relative}
+.send-sms-btn{position:absolute;right:0;top:0;height:40px;width:110px;display:flex;align-items:center;justify-content:center;background:#555;cursor:pointer}
+.login-btn{padding:12px;background:#666;text-align:center}
+.handle-bottom{position:absolute;bottom:48px}
+</style></head><body>
+<div class="leigod-modal-mask"><div class="leigod-modal" style="width:860px;height:480px;min-width:400px">
+<div class="leigod-modal-body"><div class="login-modal">
+<div class="qr-panel">QR panel fixture</div><div class="login-modal-content"><form>
+<div class="field"><label>手机号</label><input placeholder="手机号"></div>
+<div class="field"><label>手机验证码</label><div class="sms-field"><input placeholder="验证码"><div id="send-code" class="send-sms-btn" onclick="window.fixtureCodeClicked=true">获取验证码</div></div></div>
+<div class="login-btn">登录 / 注册</div></form><div class="handle-bottom">登录方式</div>
+</div></div></div></div></div>
+</body></html>

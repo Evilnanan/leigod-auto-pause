@@ -19,6 +19,7 @@ import android.os.Looper;
 import android.os.PersistableBundle;
 import android.view.Gravity;
 import android.view.View;
+import android.text.TextUtils;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
@@ -45,6 +46,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class MainActivity extends Activity {
     private static final int GREEN = Color.rgb(33, 107, 94);
@@ -55,6 +58,10 @@ public final class MainActivity extends Activity {
     private TextView status, detail, origin;
     private Button copy;
     private ProgressBar progress;
+    private final List<View> chromeViews = new ArrayList<>();
+    private Button fullscreenButton;
+    private LinearLayout root;
+    private boolean fullscreen;
     private String token = "";
     private boolean verified, resumed, reading, checking;
     private int generation;
@@ -81,7 +88,7 @@ public final class MainActivity extends Activity {
     }
 
     private void buildUi() {
-        LinearLayout root = new LinearLayout(this);
+        root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(243, 246, 244));
         root.setPadding(dp(16), dp(16), dp(16), dp(12));
@@ -94,7 +101,8 @@ public final class MainActivity extends Activity {
                 top = insets.getSystemWindowInsetTop(); bottom = insets.getSystemWindowInsetBottom();
                 left = insets.getSystemWindowInsetLeft(); right = insets.getSystemWindowInsetRight();
             }
-            view.setPadding(left + dp(16), top + dp(10), right + dp(16), bottom + dp(10));
+            int side = dp(fullscreen ? 8 : 16);
+            view.setPadding(left + side, top + dp(10), right + side, bottom + dp(10));
             return insets;
         });
         setContentView(root);
@@ -119,6 +127,7 @@ public final class MainActivity extends Activity {
         heading.addView(menu, new LinearLayout.LayoutParams(dp(44), dp(48)));
         menu.setOnClickListener(this::showMenu);
         root.addView(heading);
+        chromeViews.add(heading);
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -128,16 +137,37 @@ public final class MainActivity extends Activity {
         status.setId(R.id.token_status);
         status.setTypeface(null, Typeface.BOLD);
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        detail = text("在下方点“我的奖励”，登录并完成验证码。", 12, Color.rgb(88, 107, 99));
+        detail = text("在下方官网主页登录，并完成验证码。", 12, Color.rgb(88, 107, 99));
         detail.setPadding(0, dp(4), 0, 0);
         card.addView(status); card.addView(detail);
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
         cardParams.setMargins(0, dp(12), 0, dp(10));
         root.addView(card, cardParams);
+        chromeViews.add(card);
 
-        origin = text("雷神官网 · www.leigod.com", 12, GREEN);
-        origin.setPadding(dp(2), 0, 0, dp(6));
-        root.addView(origin);
+        LinearLayout webTools = row();
+        origin = text("www.leigod.com", 12, GREEN);
+        origin.setGravity(Gravity.CENTER_VERTICAL);
+        origin.setSingleLine(true); origin.setEllipsize(TextUtils.TruncateAt.END);
+        webTools.addView(origin, new LinearLayout.LayoutParams(0, dp(40), 1));
+        Button smaller = button("−", false);
+        smaller.setContentDescription("缩小网页");
+        smaller.setId(R.id.zoom_out);
+        smaller.setOnClickListener(view -> { adaptPage(); web.zoomOut(); });
+        webTools.addView(smaller, new LinearLayout.LayoutParams(dp(42), dp(40)));
+        Button larger = button("+", false);
+        larger.setContentDescription("放大网页");
+        larger.setId(R.id.zoom_in);
+        larger.setOnClickListener(view -> { adaptPage(); web.zoomIn(); });
+        webTools.addView(larger, new LinearLayout.LayoutParams(dp(42), dp(40)));
+        Button fit = button("适应", false);
+        fit.setOnClickListener(view -> fitPage());
+        webTools.addView(fit, new LinearLayout.LayoutParams(dp(52), dp(40)));
+        fullscreenButton = button("全屏", false);
+        fullscreenButton.setId(R.id.fullscreen_web);
+        fullscreenButton.setOnClickListener(view -> toggleFullscreen());
+        webTools.addView(fullscreenButton, new LinearLayout.LayoutParams(dp(76), dp(40)));
+        root.addView(webTools);
         FrameLayout frame = new FrameLayout(this);
         frame.setBackground(shape(Color.WHITE, 12));
         frame.setClipToOutline(true);
@@ -162,15 +192,18 @@ public final class MainActivity extends Activity {
         actions.addView(read, half);
         actions.addView(copy, new LinearLayout.LayoutParams(0, dp(48), 1));
         root.addView(actions);
+        chromeViews.add(actions);
         Button github = button("打开 GitHub Secret 设置  ↗", false);
         github.setOnClickListener(view -> openBrowser("https://github.com/" + repository() + "/settings/secrets/actions"));
         LinearLayout.LayoutParams githubParams = new LinearLayout.LayoutParams(-1, dp(44));
         githubParams.topMargin = dp(8);
         root.addView(github, githubParams);
+        chromeViews.add(github);
         TextView footer = text("复制后粘贴到 LEIGOD_TOKENS 并保存。", 11, Color.rgb(88, 107, 99));
         footer.setGravity(Gravity.CENTER);
         footer.setPadding(0, dp(6), 0, 0);
         root.addView(footer);
+        chromeViews.add(footer);
     }
 
     private void configureWebView() {
@@ -208,7 +241,8 @@ public final class MainActivity extends Activity {
                 return true;
             }
             @Override public void onPageFinished(WebView view, String url) {
-                origin.setText(TokenPolicy.isOfficialPage(url) ? "雷神官网 · www.leigod.com" : "当前不是雷神官网");
+                origin.setText(TokenPolicy.isOfficialPage(url) ? "www.leigod.com" : "当前不是雷神官网");
+                adaptPage();
                 readToken(false);
             }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
@@ -219,6 +253,27 @@ public final class MainActivity extends Activity {
                 setStatus("官网安全连接失败", "请检查系统时间、网络和 Android System WebView 更新。", false);
             }
         });
+    }
+
+    private void adaptPage() {
+        if (TokenPolicy.isOfficialPage(web.getUrl())) web.evaluateJavascript(PageLayout.SCRIPT, null);
+    }
+
+    private void fitPage() {
+        adaptPage();
+        web.postDelayed(() -> {
+            if (isDestroyed()) return;
+            float scale = web.getScale();
+            if (scale > 0) web.zoomBy(Math.max(0.01f, Math.min(100f, getResources().getDisplayMetrics().density / scale)));
+        }, 100);
+    }
+
+    private void toggleFullscreen() {
+        fullscreen = !fullscreen;
+        for (View view : chromeViews) view.setVisibility(fullscreen ? View.GONE : View.VISIBLE);
+        fullscreenButton.setText(fullscreen ? "退出全屏" : "全屏");
+        root.requestApplyInsets();
+        web.postDelayed(this::adaptPage, 100);
     }
 
     private void readToken(boolean requested) {
@@ -313,7 +368,7 @@ public final class MainActivity extends Activity {
         });
         menu.getMenu().add("使用说明").setOnMenuItemClickListener(item -> {
             new AlertDialog.Builder(this).setTitle("使用说明")
-                    .setMessage("1. 在官网点“我的奖励”并登录。\n2. 等待自动检测，或点“获取 / 检查”。\n3. 复制 Token，打开 GitHub 设置。\n4. 更新 LEIGOD_TOKENS 并保存。\n\n多个账号请用英文逗号合并全部 Token。提取不会延长有效期。\n\n这是个人辅助工具，非雷神官方 App。")
+                    .setMessage("1. 在官网主页打开登录窗口并登录。\n2. 等待自动检测，或点“获取 / 检查”。\n3. 复制 Token，打开 GitHub 设置。\n4. 更新 LEIGOD_TOKENS 并保存。\n\n登录框可竖向滚动；上方提供缩放、适应和全屏按钮。多个账号请用英文逗号合并全部 Token。提取不会延长有效期。\n\n这是个人辅助工具，非雷神官方 App。")
                     .setPositiveButton("知道了", null).show(); return true;
         });
         menu.show();
@@ -359,6 +414,7 @@ public final class MainActivity extends Activity {
     }
     private Button button(String label, boolean primary) {
         Button button = new Button(this); button.setText(label); button.setTextSize(14); button.setAllCaps(false);
+        button.setPadding(dp(4), 0, dp(4), 0);
         button.setTextColor(primary ? Color.WHITE : GREEN); button.setBackground(shape(primary ? GREEN : Color.rgb(225, 235, 229), 12));
         button.setMinHeight(0); button.setMinimumHeight(0); button.setElevation(0); return button;
     }
@@ -370,6 +426,7 @@ public final class MainActivity extends Activity {
         web.stopLoading(); web.destroy(); super.onDestroy();
     }
     @Override public void onBackPressed() {
-        if (web.canGoBack()) web.goBack(); else super.onBackPressed();
+        if (fullscreen) toggleFullscreen();
+        else if (web.canGoBack()) web.goBack(); else super.onBackPressed();
     }
 }

@@ -3,7 +3,7 @@ package com.evilnanan.leigodtoken;
 import java.net.URI;
 
 final class TokenPolicy {
-    static final String LOGIN_URL = "https://www.leigod.com/activitys/leigodpass2";
+    static final String LOGIN_URL = "https://www.leigod.com/";
     static final String DEFAULT_REPOSITORY = "Evilnanan/leigod-auto-pause";
 
     static boolean isOfficialPage(String value) {

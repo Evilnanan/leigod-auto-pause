@@ -3,4 +3,7 @@
     <item name="official_web" type="id" />
     <item name="token_status" type="id" />
     <item name="copy_token" type="id" />
+    <item name="zoom_out" type="id" />
+    <item name="zoom_in" type="id" />
+    <item name="fullscreen_web" type="id" />
 </resources>
