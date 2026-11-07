@@ -1,1 +1,2 @@
 49d2729a4c438a16b37bb89fce42004d42a783b29b7c09bbc79367b048580edf  leigod-token-helper-v0.1.0.apk
+390fbf576fa2ed75694ff2f9a298d579b57790de18e74000cb89fcda6ad67b27  leigod-token-helper-v0.1.1.apk
