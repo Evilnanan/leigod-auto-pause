@@ -12,6 +12,10 @@
 
 ## 获取 account_token（每7天操作一次）
 
+### 安卓 App：官网内登录后提取
+
+新增 [雷神 Token 助手 Android App](android/README.md)：在 App 内完成官网登录和验证码，自动检测并验证 token，点击复制后即可跳转到 GitHub 更新 Secret。支持 Android 8.0 及以上，源码及安装说明见链接。
+
 ### 安卓手机：Edge / Chrome 书签提取
 
 手机可通过书签读取 token，无需 F12。详见 [手机刷新指南](docs/mobile-refresh.md)：包含完整书签代码、官网登录入口、更新 Secret 和只读验证步骤。
