@@ -16,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/token-helper.p12
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v5
@@ -25,6 +24,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+      - name: 设置临时签名路径
+        run: echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/token-helper.p12" >> "$GITHUB_ENV"
       - name: 准备 APK 签名
         if: env.ANDROID_KEYSTORE_PASSWORD != ''
         env:
