@@ -69,6 +69,7 @@ public final class MainActivity extends Activity {
     private final Runnable poll = new Runnable() {
         @Override public void run() {
             if (!resumed) return;
+            adaptPage();
             readToken(false);
             handler.postDelayed(this, 2000);
         }
@@ -230,6 +231,7 @@ public final class MainActivity extends Activity {
             @Override public void onProgressChanged(WebView view, int value) {
                 progress.setProgress(value);
                 progress.setVisibility(value < 100 ? View.VISIBLE : View.GONE);
+                if (value >= 70) adaptPage();
             }
         });
         web.setWebViewClient(new WebViewClient() {

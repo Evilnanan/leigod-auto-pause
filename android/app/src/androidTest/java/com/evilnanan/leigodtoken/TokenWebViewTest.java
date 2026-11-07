@@ -45,7 +45,7 @@ public class TokenWebViewTest {
             scenario.onActivity(activity -> {
                 WebView web = activity.findViewById(R.id.official_web);
                 web.stopLoading();
-                web.loadDataWithBaseURL("https://www.leigod.com/", "<html><body>Local test fixture</body></html>", "text/html", "UTF-8", null);
+                web.loadDataWithBaseURL("https://www.leigod.com/", "<html><body>Local test fixture</body></html>", "text/html", "UTF-8", "https://www.leigod.com/");
             });
             waitForOrigin(scenario);
             JSONObject missing = extract(scenario, "localStorage.removeItem('account_token');");
@@ -68,7 +68,7 @@ public class TokenWebViewTest {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
                 WebView web = activity.findViewById(R.id.official_web); web.stopLoading();
-                web.loadDataWithBaseURL("https://www.leigod.com/", fixture, "text/html", "UTF-8", null);
+                web.loadDataWithBaseURL("https://www.leigod.com/", fixture, "text/html", "UTF-8", "https://www.leigod.com/");
             });
             waitForOrigin(scenario);
             String metricsScript = "JSON.stringify((function(){var e=document.getElementById('send-code');var r=e.getBoundingClientRect();return {adapted:!!document.querySelector('.token-helper-login-shell'),x:r.x,y:r.y,width:r.width,height:r.height,viewport:innerWidth}})())";
@@ -78,7 +78,7 @@ public class TokenWebViewTest {
                 if (metrics.getBoolean("adapted")) break;
                 Thread.sleep(100);
             }
-            assertNotNull(metrics); assertTrue(metrics.getBoolean("adapted"));
+            assertNotNull(metrics); assertTrue("Adapter not installed; native URL is " + nativeUrl(scenario) + "; metrics=" + metrics,metrics.getBoolean("adapted"));
             assertTrue(metrics.getDouble("x")>=0);
             assertTrue(metrics.getDouble("x")+metrics.getDouble("width")<=metrics.getDouble("viewport")+1);
             evaluate(scenario, "document.getElementById('send-code').scrollIntoView({block:'center'})");
@@ -124,6 +124,12 @@ public class TokenWebViewTest {
         scenario.onActivity(activity -> ((WebView) activity.findViewById(R.id.official_web))
                 .evaluateJavascript(script,value -> {result.set(value); done.countDown();}));
         assertTrue(done.await(10,TimeUnit.SECONDS)); return result.get();
+    }
+
+    private String nativeUrl(ActivityScenario<MainActivity> scenario) {
+        AtomicReference<String> url = new AtomicReference<>();
+        scenario.onActivity(activity -> url.set(((WebView) activity.findViewById(R.id.official_web)).getUrl()));
+        return url.get();
     }
 
     private void waitForOrigin(ActivityScenario<MainActivity> scenario) throws Exception {
