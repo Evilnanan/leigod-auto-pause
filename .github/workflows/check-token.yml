@@ -2,6 +2,9 @@ name: 检查雷神 Token（只读）
 
 on:
   workflow_dispatch:
+  schedule:
+    # UTC 14:00 = 北京时间 22:00
+    - cron: '0 14 * * *'
 
 permissions:
   contents: read

@@ -18,7 +18,7 @@
 
 每周只需：**重新登录官网 → 地址栏调用“雷神取token”书签 → 复制 → 更新 `LEIGOD_TOKENS`**。
 
-更新后可手动运行 Actions 中的 **检查雷神 Token（只读）**，确认登录状态；该任务不执行暂停或恢复。
+更新后可手动运行 Actions 中的 **检查雷神 Token（只读）**，确认登录状态；该任务也会每天北京时间 **22:00** 自动检查，不执行暂停或恢复。检查失败时任务会标红；请在 [GitHub 通知设置](https://github.com/settings/notifications) 中开启 Actions 通知，并选择仅失败时通知。
 
 ### 电脑方法一：浏览器 Console 提取
 

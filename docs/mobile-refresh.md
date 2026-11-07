@@ -35,6 +35,16 @@ javascript:(()%20%3D%3E%20%7B%0A%20%20const%20repository%20%3D%20'Evilnanan%2Fle
 
 检查成功会显示“Token 有效”和当前计费状态。检查成功不代表时长已经暂停；如需立刻暂停，可手动运行 **雷神自动暂停**（`auto-pause.yml`）。定时暂停在北京时间每天凌晨 1 点执行。
 
+## 每晚 22:00 自动检查与失败通知
+
+独立的 **检查雷神 Token（只读）** 任务每天北京时间 22:00（UTC 14:00）自动运行，也保留手动触发。它只查询账号信息和计费状态，不执行暂停或恢复；凌晨 1:00 的自动暂停任务独立运行。
+
+任意账号的 token 失效、Secret 为空或接口请求失败，检查任务都会失败，方便 GitHub 发出 Actions 失败通知。网络超时等故障也会导致失败，应先查看日志；只有确认登录失效后，才需要重新登录并更新 `LEIGOD_TOKENS`。
+
+请在 [GitHub 通知设置](https://github.com/settings/notifications) 的 **System → Actions** 中开启 **Email** 或 **On GitHub**，选择 **Only notify for failed workflows** 并保存；同时确认正在关注本仓库。通知由 GitHub 按账号设置发送，工作流本身不发送邮件。详见 [GitHub Actions 通知设置说明](https://docs.github.com/en/subscriptions-and-notifications/how-tos/managing-github-actions-notifications)。
+
+更新 Secret 后可立即手动运行此检查，确认恢复正常。
+
 ## 常见问题
 
 - **只做了弹窗测试，还没看到 token**：`javascript:alert(...)` 只能验证浏览器执行方式。请将书签网址换成上面完整的提取代码，再先登录雷神官网。
