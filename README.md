@@ -94,7 +94,7 @@ Fork 的项目默认Actions是禁用的，需要手动打开
 
 ![image](https://github.com/user-attachments/assets/ab599689-7761-4f9f-9260-7772ff0ffbd6)
 
-如需修改 schedule 时间，请修改`.github/workflows/main.yml`文件
+如需修改 schedule 时间，请修改`.github/workflows/auto-pause.yml`文件。自动暂停任务名称为 **雷神自动暂停**。
 
 ![image](https://github.com/user-attachments/assets/7d153d6c-ebdb-4cc7-a4a9-002a59adcb71)
 
