@@ -12,7 +12,15 @@
 
 ## 获取 account_token（每7天操作一次）
 
-### 方法一：浏览器 Console 提取（推荐）
+### 安卓手机：Edge / Chrome 书签提取
+
+手机可通过书签读取 token，无需 F12。详见 [手机刷新指南](docs/mobile-refresh.md)：包含完整书签代码、官网登录入口、更新 Secret 和只读验证步骤。
+
+每周只需：**重新登录官网 → 地址栏调用“雷神取token”书签 → 复制 → 更新 `LEIGOD_TOKENS`**。
+
+更新后可手动运行 Actions 中的 **检查雷神 Token（只读）**，确认登录状态；该任务不执行暂停或恢复。
+
+### 电脑方法一：浏览器 Console 提取
 
 1. 在浏览器打开 **[https://www.leigod.com/](https://www.leigod.com/)** 并登录（需要手动验证）
 2. 登录成功后，按 **F12** 打开开发者工具 → **Console** 标签
@@ -123,3 +131,4 @@ USERNAME_ARR="17000000001" PASSWORD_ARR="password1" node index.js
 
 - [himcs/LeishenAuto](https://github.com/himcs/LeishenAuto/)
 - [jiajiaxd/leigod-api](https://github.com/jiajiaxd/leigod-api)
+

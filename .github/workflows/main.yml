@@ -2,6 +2,13 @@ name: leigod auto pause action
 
 on:
   push:
+    branches: [main]
+    paths:
+      - index.js
+      - leigod.js
+      - package.json
+      - package-lock.json
+      - .github/workflows/main.yml
   workflow_dispatch:
   schedule:
     # 定时任务，北京时间3点执行任务 19 + 8 = 27 % 24 = 3
@@ -26,3 +33,4 @@ jobs:
           LEIGOD_TOKENS: ${{ secrets.LEIGOD_TOKENS }}
           USERNAME_ARR: ${{ secrets.USERNAME_ARR }}
           PASSWORD_ARR: ${{ secrets.PASSWORD_ARR }}
+
