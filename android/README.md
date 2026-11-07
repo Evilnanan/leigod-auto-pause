@@ -2,6 +2,12 @@
 
 个人辅助工具，非雷神官方 App。支持 Android 8.0 及以上，建议更新系统的 Android System WebView / Chrome。
 
+## 安装包
+
+[下载已签名 APK：v0.1.0](https://github.com/Evilnanan/leigod-auto-pause/raw/refs/heads/feat/android-token-app/android/downloads/leigod-token-helper-v0.1.0.apk)
+
+安装时如系统询问，请允许当前浏览器安装应用。安装包与 [SHA256SUMS.txt](downloads/SHA256SUMS.txt) 一同保存在本分支 `android/downloads/` 目录，发布包关闭调试。源码和包内均不包含用户的账号、密码、token 或私钥。
+
 ## 使用
 
 1. 安装 APK，打开 App，在下方雷神官网点击 **我的奖励** 唤起登录窗口。
