@@ -90,7 +90,7 @@ Fork 的项目默认Actions是禁用的，需要手动打开
 
 ### Run actions
 
-可以在 Actions 里手动触发，默认是北京时间凌晨 3 点触发
+可以在 Actions 里手动触发，默认是北京时间凌晨 1 点触发
 
 ![image](https://github.com/user-attachments/assets/ab599689-7761-4f9f-9260-7772ff0ffbd6)
 
