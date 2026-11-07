@@ -1,0 +1,23 @@
+name: 检查雷神 Token（只读）
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: npm ci
+      - name: 检查登录和暂停状态
+        run: node tools/check-token.js
+        env:
+          LEIGOD_TOKENS: ${{ secrets.LEIGOD_TOKENS }}
