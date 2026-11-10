@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { createWorker, CHECK_CRON, PAUSE_CRON } from '../src/worker.js';
 
 const when = Date.UTC(2026, 10, 10, 14, 0, 0);
@@ -203,6 +204,57 @@ test('public health has no account queries or account data', async () => {
   assert.equal(response.status, 200);
   assert.equal((await response.json()).status, 'online');
   assert.equal(f.requests.length, 0);
+});
+
+test('Android association publishes only the release certificate and never queries accounts', async () => {
+  const f = fixture([]);
+  const response = await f.worker.fetch(new Request('https://worker.test/.well-known/assetlinks.json'), env);
+  assert.equal(response.status, 200);
+  const [association] = await response.json();
+  assert.equal(association.target.package_name, 'com.evilnanan.leigodtoken');
+  assert.match(association.target.sha256_cert_fingerprints[0], /^([A-F0-9]{2}:){31}[A-F0-9]{2}$/);
+  assert.equal(f.requests.length, 0);
+});
+
+test('OAuth return page keeps callback values out of HTML and restricts inline scripts by hash', async () => {
+  const f = fixture([]);
+  const response = await f.worker.fetch(new Request('https://worker.test/oauth/callback?code=private-code&state=private-state'), env);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.equal(response.headers.get('Referrer-Policy'), 'no-referrer');
+  const html = await response.text();
+  assert.ok(!html.includes('private-code'));
+  assert.ok(!html.includes('private-state'));
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const hash = Buffer.from(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(script))).toString('base64');
+  assert.ok(response.headers.get('Content-Security-Policy').includes(`'sha256-${hash}'`));
+  assert.equal(f.requests.length, 0);
+});
+
+test('OAuth browser fallback forwards only fixed callback fields and clears the browser URL', async () => {
+  const f = fixture([]);
+  const response = await f.worker.fetch(new Request('https://worker.test/oauth/callback'), env);
+  const script = (await response.text()).match(/<script>([\s\S]*?)<\/script>/)[1];
+  for (const [query, allowed] of [
+    ['?code=a%26b&state=valid&redirect_uri=https://evil.example', true],
+    ['?code=a&state=one&state=two', false], ['?code=a', false],
+  ]) {
+    const link = { hidden: true }, message = {}, cleared = [];
+    runInNewContext(script, {
+      URL, URLSearchParams, location: { href: `https://worker.test/oauth/callback${query}` },
+      history: { replaceState: (...args) => cleared.push(args[2]) },
+      document: { getElementById: id => id === 'return-app' ? link : message },
+    });
+    assert.deepEqual(cleared, ['/oauth/callback']);
+    assert.equal(link.hidden, !allowed);
+    if (allowed) {
+      const target = new URL(link.href);
+      assert.equal(target.protocol, 'com.evilnanan.leigodtoken:');
+      assert.equal(target.hostname, 'oauth');
+      assert.equal(target.searchParams.get('code'), 'a&b');
+      assert.equal(target.searchParams.has('redirect_uri'), false);
+    } else assert.equal(link.href, undefined);
+  }
 });
 
 test('Telegram notification failures cannot leak bot keys through exception text', async () => {

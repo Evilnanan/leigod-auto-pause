@@ -90,7 +90,13 @@ Cloudflare 机器的出口 IP 与 GitHub 不同，部署后应进行上述真实
 3. 编辑 `LEIGOD_TOKENS`，保存并部署；多个账号保留全部 token，用英文逗号分隔。
 4. 手动运行 `/check`，或查看下一次检查结果。
 
-安卓 App v0.1.1 仍可用于官网登录、验证和复制。它的 GitHub 设置按钮指向旧保存位置；迁移后请直接在 Cloudflare 设置中保存，而不是只修改 GitHub Secret。Token 有效期仍由雷神决定，迁移平台不会自动续期。
+安卓 App v0.2.0 支持通过系统浏览器 OAuth + PKCE 授权 Cloudflare，一键更新单账号的 `LEIGOD_TOKENS`；初次需在 Cloudflare 创建私有 OAuth 客户端。安装包和设置步骤见 [安卓 App 分支说明](https://github.com/Evilnanan/leigod-auto-pause/blob/feat/android-token-app/android/README.md)。旧版 v0.1.1 仍可用于验证和复制，但其 GitHub 设置按钮指向旧保存位置。Token 有效期仍由雷神决定，迁移平台不会自动续期。
+
+### 安卓 OAuth 回调支持
+
+Worker 额外提供两个不访问账号数据的公开 GET 路由：`/oauth/callback` 用于返回手机 App，`/.well-known/assetlinks.json` 用于 Android 验证本应用正式签名。回调页不交换访问令牌，查询参数不插入 HTML；页面清除地址栏里的授权码参数后，只允许用户点击固定 App 协议返回。App 校验 state、PKCE、回调目标及 10 分钟有效期。
+
+目前这两个路由匹配个人版本的 HTTPS 回调域名和签名。若自行修改应用 ID、签名或回调域名，应同步更新 Android 清单、`CloudflareConfig`、Worker 的应用关联文件及 Cloudflare OAuth 客户端的 Redirect URL。公开签名证书指纹不包含签名私钥。
 
 ## 开发与 CLI 部署
 

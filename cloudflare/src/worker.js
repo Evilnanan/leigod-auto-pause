@@ -1,3 +1,4 @@
+import { oauthPage } from './oauth-pages.js';
 const API = 'https://webapi.leigod.com';
 export const CHECK_CRON = '0 14 * * *'; // 北京时间 22:00
 export const PAUSE_CRON = '0 17 * * *'; // 北京时间次日 01:00
@@ -224,6 +225,10 @@ export function createWorker({ fetchImpl = (...args) => globalThis.fetch(...args
     },
     async fetch(request, env) {
       const path = new URL(request.url).pathname;
+      if (request.method === 'GET') {
+        const page = await oauthPage(path);
+        if (page) return page;
+      }
       if ((path === '/' || path === '/health') && request.method === 'GET') {
         return json({ service: 'leigod-auto-pause', status: 'online', schedules: { check: '22:00 Asia/Shanghai', pause: '01:00 Asia/Shanghai' } });
       }
