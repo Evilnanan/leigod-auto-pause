@@ -406,7 +406,10 @@ public final class MainActivity extends Activity {
     private String worker() { return preferences.getString("cf_worker", CloudflareConfig.WORKER); }
     private String clientId() { return preferences.getString("cf_client", CloudflareConfig.CLIENT_ID); }
     private boolean connected() {
-        try { return !secure.get("credentials").isEmpty(); } catch (Exception ignored) { return false; }
+        try {
+            String saved = secure.get("credentials");
+            return !saved.isEmpty() && new JSONObject(saved).optInt("schema") == 2;
+        } catch (Exception ignored) { return false; }
     }
 
     private void refreshCloudflareUi() {
@@ -473,7 +476,7 @@ public final class MainActivity extends Activity {
         if (!CloudflareConfig.validClient(clientId())) { editCloudflare(); return; }
         try {
             String state = CloudflareOAuth.random(), verifier = CloudflareOAuth.random();
-            secure.put("pending", new JSONObject().put("state", state).put("verifier", verifier)
+            secure.put("pending", new JSONObject().put("schema", 2).put("state", state).put("verifier", verifier)
                     .put("client", clientId()).put("createdAt", System.currentTimeMillis()).toString());
             preferences.edit().putBoolean("cf_continue_update", continueUpdate).apply();
             openBrowser(CloudflareOAuth.authorize(clientId(), state, verifier));
@@ -494,6 +497,7 @@ public final class MainActivity extends Activity {
             String saved = secure.get("pending");
             if (saved.isEmpty()) throw new IllegalArgumentException("no pending login");
             JSONObject pending = new JSONObject(saved);
+            if (pending.optInt("schema") != 2) throw new IllegalArgumentException("restart authorization");
             if (!CloudflareOAuth.pendingIsValid(pending.getLong("createdAt"), System.currentTimeMillis(),
                     pending.getString("client"), clientId(), pending.getString("state"), values.get("state"))) throw new IllegalArgumentException("invalid state");
             secure.remove("pending"); // One use, including denial/error callbacks.

@@ -20,9 +20,10 @@ final class CloudflareClient {
         final long expiresAt;
         Tokens(String access, String refresh, long expiresAt) { this.access = access; this.refresh = refresh; this.expiresAt = expiresAt; }
         JSONObject json() throws Exception {
-            return new JSONObject().put("access", access).put("refresh", refresh).put("expiresAt", expiresAt);
+            return new JSONObject().put("schema", 2).put("access", access).put("refresh", refresh).put("expiresAt", expiresAt);
         }
         static Tokens from(JSONObject json) throws Exception {
+            if (json.optInt("schema") != 2) throw new IllegalArgumentException("reconnect required");
             return new Tokens(json.getString("access"), json.getString("refresh"), json.getLong("expiresAt"));
         }
     }
@@ -45,6 +46,8 @@ final class CloudflareClient {
         String access = data.optString("access_token", "");
         String refresh = data.optString("refresh_token", oldRefresh);
         int lifetime = data.optInt("expires_in", 0);
+        String scopes = data.optString("scope", "");
+        if (data.has("scope") && !java.util.Arrays.asList(scopes.split("\\s+")).contains(CloudflareConfig.WORKER_SCOPE)) throw new Failure(Problem.PERMISSION);
         if (access.isEmpty() || lifetime <= 0 || !"Bearer".equalsIgnoreCase(data.optString("token_type"))) throw new Failure(Problem.API);
         return new Tokens(access, refresh, System.currentTimeMillis() + Math.min((long) lifetime, 31536000L) * 1000);
     }
@@ -70,7 +73,7 @@ final class CloudflareClient {
             connection.setConnectTimeout(15000); connection.setReadTimeout(20000);
             connection.setRequestMethod(method);
             connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("User-Agent", "LeigodCloudflareHelper/0.2.0");
+            connection.setRequestProperty("User-Agent", "LeigodCloudflareHelper/0.2.1");
             if (bearer != null) connection.setRequestProperty("Authorization", "Bearer " + bearer);
             if (body != null) {
                 connection.setDoOutput(true); connection.setRequestProperty("Content-Type", type);

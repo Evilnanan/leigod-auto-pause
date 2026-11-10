@@ -27,9 +27,9 @@ final class CloudflareOAuth {
     }
     static String authorize(String clientId, String state, String verifier) {
         if (!CloudflareConfig.validClient(clientId)) throw new IllegalArgumentException("invalid client");
-        // With scope omitted, Cloudflare applies the scopes registered for this private client.
         return CloudflareConfig.AUTHORIZE + "?response_type=code&client_id=" + encode(clientId)
                 + "&redirect_uri=" + encode(CloudflareConfig.CALLBACK) + "&state=" + encode(state)
+                + "&scope=" + encode(CloudflareConfig.SCOPES)
                 + "&code_challenge_method=S256&code_challenge=" + challenge(verifier);
     }
     static boolean isCallback(String value) {

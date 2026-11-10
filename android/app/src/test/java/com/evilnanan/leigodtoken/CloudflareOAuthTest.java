@@ -12,6 +12,7 @@ public class CloudflareOAuthTest {
         String url = CloudflareOAuth.authorize("public-client-id", first, second);
         assertTrue(url.startsWith("https://dash.cloudflare.com/oauth2/auth?"));
         assertTrue(url.contains("code_challenge_method=S256"));
+        assertTrue(url.contains("scope=workers-scripts.edit+offline_access"));
         assertFalse(url.contains(second)); assertFalse(url.contains("client_secret"));
         assertTrue(CloudflareOAuth.matchesState(first, first));
         assertFalse(CloudflareOAuth.matchesState(first, second));

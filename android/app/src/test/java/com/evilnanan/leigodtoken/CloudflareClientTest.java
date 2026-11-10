@@ -73,4 +73,17 @@ public class CloudflareClientTest {
         server.enqueue(new MockResponse().setBody("{\"access_token\":\"missing-expiry-and-type\"}"));
         assertThrows(CloudflareClient.Failure.class, () -> client.exchange("public-client", "code", "verifier"));
     }
+    @Test public void zeroPermissionGrantsAndLegacyCredentialsRequireReauthorization() throws Exception {
+        for (String scope : new String[]{"offline_access", ""}) {
+            server.enqueue(tokens(",\"scope\":\"" + scope + "\""));
+            CloudflareClient.Failure failure = assertThrows(CloudflareClient.Failure.class,
+                    () -> client.exchange("public-client", "code", "verifier"));
+            assertEquals(CloudflareClient.Problem.PERMISSION, failure.problem);
+        }
+        assertThrows(IllegalArgumentException.class, () -> CloudflareClient.Tokens.from(
+                new JSONObject().put("access", "old-access").put("refresh", "old-refresh").put("expiresAt", 123)));
+        server.enqueue(tokens(",\"scope\":\"workers-scripts.edit offline_access\""));
+        CloudflareClient.Tokens result = client.exchange("public-client", "code", "verifier");
+        assertEquals("fake-access", CloudflareClient.Tokens.from(result.json()).access);
+    }
 }

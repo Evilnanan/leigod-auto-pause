@@ -4,14 +4,14 @@
 
 ## 安装包
 
-[下载已签名 APK：v0.2.0](https://github.com/Evilnanan/leigod-auto-pause/raw/refs/heads/feat/android-token-app/android/downloads/leigod-token-helper-v0.2.0.apk)
+[下载已签名 APK：v0.2.1](https://github.com/Evilnanan/leigod-auto-pause/raw/refs/heads/feat/android-token-app/android/downloads/leigod-token-helper-v0.2.1.apk)
 
 使用与 v0.1.0 / v0.1.1 相同的应用 ID 和正式签名，可以直接覆盖安装并保留官网登录数据。安装包与 [SHA256SUMS.txt](downloads/SHA256SUMS.txt) 同目录保存。源码和安装包不含账号密码、访问令牌、刷新令牌或私钥。Client ID、Account ID 和应用签名证书指纹是公开配置。
 
 ## 日常使用
 
 1. 在 App 下方雷神官网主页登录，手动完成验证码，等待登录检查通过。
-2. 首次点击 **连接云端**，在手机的系统浏览器中登录 Cloudflare 并授权。授权完成后通常自动返回 App；若留在回调网页，点击 **返回雷神 Cloudflare 助手**。
+2. 首次点击 **连接云端**，在手机的系统浏览器中登录 Cloudflare，选择自己的账号并点击 **Authorize** 授权。授权完成后通常自动返回 App；若留在回调网页，点击 **返回雷神 Cloudflare 助手**。
 3. 点击 **一键更新 Cloudflare**。App 会重新只读验证雷神登录，然后直接向 Cloudflare 官方 API 保存并部署 `LEIGOD_TOKENS`。
 4. 后续刷新雷神登录时，通常只需要第 1、3 步。Cloudflare 短期访问令牌过期后会尝试用加密保存的刷新令牌续期；授权被撤销或刷新失效时需要重新连接。
 
@@ -39,6 +39,8 @@ Cloudflare [支持原生应用的 Authorization Code + PKCE](https://developers.
 | Scopes | 最上面一组 **Workers → Edit**，作为必需权限；刷新令牌对应的 `offline_access` 由支持 refresh_token 的客户端配置提供 |
 | Visibility | `private`，只允许客户端所属账号的成员授权 |
 
+私有客户端不要求验证发布者域名。授权页的“this application has not verified ownership of any domain”是发布者状态提示；仍需在下方选择自己的账号，并点击 **Authorize**。不需要为此改成 public。
+
 Cloudflare 客户端注册页要求 HTTP/HTTPS 回调，不能直接填 App 自定义协议。现有 Worker 提供 HTTPS 回调页与 `/.well-known/assetlinks.json`；正式签名 App 注册了对应 Android App Link，也保留用户手动点击的自定义协议回跳。回调页不交换或保存访问令牌，只把一次性授权码和 state 交回 App。
 
 个人版已预填公开 **Client ID** `cd13467206cfc2cb1e53ec38da2c1ca5`。自行部署时，可把自己的 Client ID 填入 App 连接设置；这是公开标识。选择 `none` 的原生客户端不需要也不能在 App 中保存 Client Secret。Account ID 和 Worker 名称已预填。
@@ -46,6 +48,12 @@ Cloudflare 客户端注册页要求 HTTP/HTTPS 回调，不能直接填 App 自�
 API / OAuth 权限通常覆盖被授权账号下的 Workers，不是只授予某个 Secret 的权限；App 自身把写入目标固定为指定 Worker 的 `LEIGOD_TOKENS`。可在 Cloudflare 的第三方授权管理中撤销。**断开本机连接** 仅删除手机保存的凭据，不撤销服务端授权，也不修改已有 Secret 或停止任务。
 
 当前 API OAuth 连接不支持创建 OAuth 客户端：该管理接口要求 `OAuth Client Write` 的 API Token 或控制台操作，因此首次注册需在 Cloudflare 控制台完成。[官方注册说明](https://developers.cloudflare.com/fundamentals/oauth/create-an-oauth-client/)
+
+## v0.2.1 修复
+
+- 授权请求显式携带 `workers-scripts.edit offline_access`，修复授权页显示 `0 total permissions`。
+- 忽略旧版缺少 scope 的本机连接，升级后重新授权；若令牌响应明确缺少写入权限，则不会记为连接成功。
+- scope ID 已通过 Cloudflare 官方 `GET /oauth/scopes` 核对，页面名称为 **Workers → Edit**。
 
 ## v0.2.0 更新
 
