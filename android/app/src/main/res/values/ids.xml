@@ -6,4 +6,8 @@
     <item name="zoom_out" type="id" />
     <item name="zoom_in" type="id" />
     <item name="fullscreen_web" type="id" />
+    <item name="update_cloudflare" type="id" />
+    <item name="connect_cloudflare" type="id" />
+    <item name="cloudflare_status" type="id" />
+    <item name="cloudflare_client" type="id" />
 </resources>

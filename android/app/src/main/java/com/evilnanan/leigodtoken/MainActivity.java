@@ -20,6 +20,7 @@ import android.os.PersistableBundle;
 import android.view.Gravity;
 import android.view.View;
 import android.text.TextUtils;
+import android.text.InputType;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
@@ -38,6 +39,7 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import org.json.JSONObject;
@@ -48,6 +50,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class MainActivity extends Activity {
     private static final int GREEN = Color.rgb(33, 107, 94);
@@ -56,7 +59,10 @@ public final class MainActivity extends Activity {
     private final ExecutorService network = Executors.newSingleThreadExecutor();
     private WebView web;
     private TextView status, detail, origin;
-    private Button copy;
+    private Button copy, update, cloudflare;
+    private TextView cloudflareStatus;
+    private SecureStore secure;
+    private boolean cloudflareBusy;
     private ProgressBar progress;
     private final List<View> chromeViews = new ArrayList<>();
     private Button fullscreenButton;
@@ -83,9 +89,11 @@ public final class MainActivity extends Activity {
                 | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         if (Build.VERSION.SDK_INT >= 30) getWindow().setDecorFitsSystemWindows(false);
         preferences = getSharedPreferences("settings", MODE_PRIVATE);
+        secure = new SecureStore(getApplicationContext());
         buildUi();
         configureWebView();
         web.loadUrl(TokenPolicy.LOGIN_URL);
+        handleCloudflareCallback(getIntent());
     }
 
     private void buildUi() {
@@ -117,10 +125,10 @@ public final class MainActivity extends Activity {
         LinearLayout title = new LinearLayout(this);
         title.setOrientation(LinearLayout.VERTICAL);
         title.setPadding(dp(12), 0, 0, 0);
-        TextView name = text("雷神 Token 助手", 20, INK);
+        TextView name = text("雷神 · Cloudflare", 20, INK);
         name.setTypeface(null, Typeface.BOLD);
         title.addView(name);
-        title.addView(text("官网手动登录 · 一键复制凭证", 12, Color.rgb(88, 107, 99)));
+        title.addView(text("官网登录 · 一键更新云端凭证", 12, Color.rgb(88, 107, 99)));
         heading.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
         TextView menu = text("⋮", 28, INK);
         menu.setGravity(Gravity.CENTER);
@@ -194,17 +202,25 @@ public final class MainActivity extends Activity {
         actions.addView(copy, new LinearLayout.LayoutParams(0, dp(48), 1));
         root.addView(actions);
         chromeViews.add(actions);
-        Button github = button("打开 GitHub Secret 设置  ↗", false);
-        github.setOnClickListener(view -> openBrowser("https://github.com/" + repository() + "/settings/secrets/actions"));
-        LinearLayout.LayoutParams githubParams = new LinearLayout.LayoutParams(-1, dp(44));
-        githubParams.topMargin = dp(8);
-        root.addView(github, githubParams);
-        chromeViews.add(github);
-        TextView footer = text("复制后粘贴到 LEIGOD_TOKENS 并保存。", 11, Color.rgb(88, 107, 99));
-        footer.setGravity(Gravity.CENTER);
-        footer.setPadding(0, dp(6), 0, 0);
-        root.addView(footer);
-        chromeViews.add(footer);
+        LinearLayout cloudActions = row();
+        cloudActions.setPadding(0, dp(8), 0, 0);
+        update = button("一键更新 Cloudflare", true);
+        update.setId(R.id.update_cloudflare);
+        update.setOnClickListener(view -> updateCloudflare());
+        LinearLayout.LayoutParams updateParams = new LinearLayout.LayoutParams(0, dp(48), 2);
+        updateParams.setMarginEnd(dp(8));
+        cloudActions.addView(update, updateParams);
+        cloudflare = button("连接云端", false);
+        cloudflare.setId(R.id.connect_cloudflare);
+        cloudflare.setOnClickListener(view -> cloudflareMenu(view));
+        cloudActions.addView(cloudflare, new LinearLayout.LayoutParams(0, dp(48), 1));
+        root.addView(cloudActions); chromeViews.add(cloudActions);
+        cloudflareStatus = text("", 11, Color.rgb(88, 107, 99));
+        cloudflareStatus.setId(R.id.cloudflare_status);
+        cloudflareStatus.setPadding(0, dp(6), 0, 0);
+        cloudflareStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+        root.addView(cloudflareStatus); chromeViews.add(cloudflareStatus);
+        refreshCloudflareUi();
     }
 
     private void configureWebView() {
@@ -312,6 +328,7 @@ public final class MainActivity extends Activity {
         verified = false;
         copy.setEnabled(false);
         copy.setAlpha(0.5f);
+        refreshCloudflareUi();
         int checkGeneration = ++generation;
         setStatus("已读取，正在检查登录", "只查询账号状态，不会暂停或恢复时长。", false);
         network.execute(() -> {
@@ -322,9 +339,10 @@ public final class MainActivity extends Activity {
                 copy.setEnabled(true);
                 copy.setAlpha(1f);
                 verified = state == LeigodClient.State.VALID_PAUSED || state == LeigodClient.State.VALID_RUNNING;
+                refreshCloudflareUi();
                 switch (state) {
-                    case VALID_PAUSED -> setStatus("登录有效 · 时长已暂停", "可以复制 Token，然后到 GitHub 更新 Secret。", true);
-                    case VALID_RUNNING -> setStatus("登录有效 · 时长正在计费", "可以复制 Token；本 App 不会执行暂停。", true);
+                    case VALID_PAUSED -> setStatus("登录有效 · 时长已暂停", "点击“一键更新 Cloudflare”保存新凭证。", true);
+                    case VALID_RUNNING -> setStatus("登录有效 · 时长正在计费", "可以更新云端凭证；App 只检查，不执行暂停。", true);
                     case LOGIN_REJECTED -> setStatus("登录已失效", "请在官网重新登录，再点“获取 / 检查”。", false);
                     case NETWORK_ERROR -> setStatus("已读取，但暂时无法验证", "可检查网络后重试；这不一定代表 Token 过期。", false);
                 }
@@ -336,7 +354,7 @@ public final class MainActivity extends Activity {
         if (token.isEmpty()) return;
         if (!verified) {
             new AlertDialog.Builder(this).setTitle("尚未确认有效")
-                    .setMessage("当前 Token 未通过验证。可以先重新登录或检查网络，也可手动复制后在 GitHub 验证。")
+                    .setMessage("当前 Token 未通过验证。可以先重新登录或检查网络，也可手动复制后在 Cloudflare 验证。")
                     .setPositiveButton("仍然复制", (dialog, which) -> writeClipboard())
                     .setNegativeButton("取消", null).show();
         } else writeClipboard();
@@ -348,16 +366,17 @@ public final class MainActivity extends Activity {
         extras.putBoolean("android.content.extra.IS_SENSITIVE", true);
         clip.getDescription().setExtras(extras);
         ((ClipboardManager) getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(clip);
-        toast("Token 已复制，请到 GitHub 更新 LEIGOD_TOKENS");
+        toast("Token 已复制，可在 Cloudflare 更新 LEIGOD_TOKENS");
     }
 
     private void showMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
         menu.getMenu().add("重新打开官网").setOnMenuItemClickListener(item -> { web.loadUrl(TokenPolicy.LOGIN_URL); return true; });
-        menu.getMenu().add("GitHub 仓库").setOnMenuItemClickListener(item -> { editRepository(); return true; });
+        menu.getMenu().add("Cloudflare 连接设置").setOnMenuItemClickListener(item -> { editCloudflare(); return true; });
+        menu.getMenu().add("打开 Cloudflare Secret 设置").setOnMenuItemClickListener(item -> { openCloudflareDashboard(); return true; });
         menu.getMenu().add("清除本机登录记录").setOnMenuItemClickListener(item -> {
             new AlertDialog.Builder(this).setTitle("清除本机登录记录？")
-                    .setMessage("清除本 App 内的官网登录数据，不会修改 GitHub 中保存的 Secret。")
+                    .setMessage("清除本 App 内的雷神官网登录数据，不会修改 Cloudflare Secret 或断开云端授权。")
                     .setPositiveButton("清除", (dialog, which) -> {
                         clearToken();
                         WebStorage.getInstance().deleteAllData();
@@ -370,7 +389,7 @@ public final class MainActivity extends Activity {
         });
         menu.getMenu().add("使用说明").setOnMenuItemClickListener(item -> {
             new AlertDialog.Builder(this).setTitle("使用说明")
-                    .setMessage("1. 在官网主页打开登录窗口并登录。\n2. 等待自动检测，或点“获取 / 检查”。\n3. 复制 Token，打开 GitHub 设置。\n4. 更新 LEIGOD_TOKENS 并保存。\n\n登录框可竖向滚动；上方提供缩放、适应和全屏按钮。多个账号请用英文逗号合并全部 Token。提取不会延长有效期。\n\n这是个人辅助工具，非雷神官方 App。")
+                    .setMessage("1. 在下方雷神官网登录，等待登录检查通过。\n2. 首次点击“连接云端”，在系统浏览器登录 Cloudflare 并授权。\n3. 返回后点击“一键更新 Cloudflare”。以后通常只需第 1、3 步。\n\n更新仅替换指定 Worker 的 LEIGOD_TOKENS，其他 Secret 和定时设置不变。此按钮适用于单账号；多账号请复制全部 Token，在云端手动合并保存。\n\n网页登录授权需先创建一次私有 OAuth 客户端，填写公开 Client ID。应用不收集 Cloudflare 密码。提取 Token 不会延长有效期，也不会暂停或恢复时长。\n\n这是个人辅助工具，非雷神或 Cloudflare 官方 App。")
                     .setPositiveButton("知道了", null).show(); return true;
         });
         menu.show();
@@ -380,21 +399,176 @@ public final class MainActivity extends Activity {
         generation++;
         token = ""; verified = false; checking = false;
         copy.setEnabled(false); copy.setAlpha(0.5f);
+        refreshCloudflareUi();
     }
 
-    private String repository() { return preferences.getString("repository", TokenPolicy.DEFAULT_REPOSITORY); }
+    private String account() { return preferences.getString("cf_account", CloudflareConfig.ACCOUNT); }
+    private String worker() { return preferences.getString("cf_worker", CloudflareConfig.WORKER); }
+    private String clientId() { return preferences.getString("cf_client", CloudflareConfig.CLIENT_ID); }
+    private boolean connected() {
+        try { return !secure.get("credentials").isEmpty(); } catch (Exception ignored) { return false; }
+    }
 
-    private void editRepository() {
-        EditText input = new EditText(this);
-        input.setSingleLine(true); input.setText(repository()); input.setPadding(dp(20), dp(12), dp(20), dp(12));
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("GitHub 仓库（用户名/仓库名）")
-                .setView(input).setPositiveButton("保存", null).setNegativeButton("取消", null).create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
-            String value = input.getText().toString().trim();
-            if (!TokenPolicy.validRepository(value)) { input.setError("请输入 用户名/仓库名"); return; }
-            preferences.edit().putString("repository", value).apply(); dialog.dismiss();
-        }));
+    private void refreshCloudflareUi() {
+        if (update == null) return;
+        update.setEnabled(verified && !cloudflareBusy);
+        update.setAlpha(update.isEnabled() ? 1f : 0.5f);
+        update.setText(cloudflareBusy ? "正在处理…" : "一键更新 Cloudflare");
+        cloudflare.setEnabled(!cloudflareBusy);
+        cloudflare.setText(connected() ? "云端设置" : "连接云端");
+        cloudflareStatus.setText((connected() ? "Cloudflare 已连接 · " : "首次连接需网页登录授权 · ") + worker()
+                + "\n单账号更新会替换 LEIGOD_TOKENS；多账号请到云端手动合并。");
+    }
+
+    private void cloudflareMenu(View anchor) {
+        if (cloudflareBusy) return;
+        if (!connected()) { beginCloudflareLogin(false); return; }
+        PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add("连接设置").setOnMenuItemClickListener(item -> { editCloudflare(); return true; });
+        menu.getMenu().add("重新登录授权").setOnMenuItemClickListener(item -> { beginCloudflareLogin(false); return true; });
+        menu.getMenu().add("打开 Secret 设置").setOnMenuItemClickListener(item -> { openCloudflareDashboard(); return true; });
+        menu.getMenu().add("断开本机连接").setOnMenuItemClickListener(item -> {
+            secure.remove("credentials"); secure.remove("pending");
+            preferences.edit().remove("cf_continue_update").apply();
+            refreshCloudflareUi(); toast("已删除本机授权凭据；云端 Secret 和定时任务不受影响"); return true;
+        });
+        menu.show();
+    }
+
+    private void openCloudflareDashboard() { openBrowser(CloudflareConfig.dashboard(account(), worker())); }
+
+    private EditText field(LinearLayout form, String label, String value) {
+        TextView caption = text(label, 13, INK); caption.setPadding(0, dp(10), 0, 0); form.addView(caption);
+        EditText input = new EditText(this); input.setSingleLine(true); input.setText(value);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        input.setAutofillHints((String[]) null); form.addView(input); return input;
+    }
+    private void editCloudflare() {
+        if (cloudflareBusy) { toast("请等待当前请求完成"); return; }
+        LinearLayout form = new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL); form.setPadding(dp(20), 0, dp(20), dp(12));
+        form.addView(text("首次填写公开 Client ID，之后在浏览器登录授权。账号和 Worker 已预填。", 13, INK));
+        EditText client = field(form, "OAuth Client ID（不是 Secret）", clientId()); client.setId(R.id.cloudflare_client);
+        EditText account = field(form, "Cloudflare Account ID", account());
+        EditText worker = field(form, "Worker 名称", worker());
+        ScrollView scroll = new ScrollView(this); scroll.addView(form);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Cloudflare 连接设置")
+                .setView(scroll).setPositiveButton("保存并登录", null).setNeutralButton("打开云端设置", null).setNegativeButton("取消", null).create();
+        dialog.setOnShowListener(ignored -> {
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view -> openCloudflareDashboard());
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+                String c = client.getText().toString().trim(), a = account.getText().toString().trim(), w = worker.getText().toString().trim();
+                if (!CloudflareConfig.validClient(c)) { client.setError("请填写 OAuth 客户端的公开 Client ID"); return; }
+                if (!CloudflareConfig.validAccount(a)) { account.setError("请填写有效 Account ID"); return; }
+                if (!CloudflareConfig.validWorker(w)) { worker.setError("请输入 Worker 名称，不是网址"); return; }
+                if (!c.equals(clientId())) { secure.remove("credentials"); secure.remove("pending"); }
+                preferences.edit().putString("cf_client", c).putString("cf_account", a).putString("cf_worker", w).apply();
+                dialog.dismiss(); refreshCloudflareUi(); beginCloudflareLogin(false);
+            });
+        });
         dialog.show();
+    }
+
+    private void beginCloudflareLogin(boolean continueUpdate) {
+        if (cloudflareBusy) return;
+        if (!CloudflareConfig.validClient(clientId())) { editCloudflare(); return; }
+        try {
+            String state = CloudflareOAuth.random(), verifier = CloudflareOAuth.random();
+            secure.put("pending", new JSONObject().put("state", state).put("verifier", verifier)
+                    .put("client", clientId()).put("createdAt", System.currentTimeMillis()).toString());
+            preferences.edit().putBoolean("cf_continue_update", continueUpdate).apply();
+            openBrowser(CloudflareOAuth.authorize(clientId(), state, verifier));
+            cloudflareStatus.setText("请在浏览器登录 Cloudflare 并授权，完成后返回 App。");
+        } catch (Exception ignored) { toast("无法安全保存登录状态，请检查本机锁屏和系统存储"); }
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent); setIntent(intent); handleCloudflareCallback(intent);
+    }
+    private void handleCloudflareCallback(Intent intent) {
+        Uri data = intent == null ? null : intent.getData();
+        if (data == null) return;
+        intent.setData(null);
+        if (!CloudflareOAuth.isCallback(data.toString()) || cloudflareBusy) return;
+        try {
+            Map<String, String> values = CloudflareOAuth.parameters(data.toString());
+            String saved = secure.get("pending");
+            if (saved.isEmpty()) throw new IllegalArgumentException("no pending login");
+            JSONObject pending = new JSONObject(saved);
+            if (!CloudflareOAuth.pendingIsValid(pending.getLong("createdAt"), System.currentTimeMillis(),
+                    pending.getString("client"), clientId(), pending.getString("state"), values.get("state"))) throw new IllegalArgumentException("invalid state");
+            secure.remove("pending"); // One use, including denial/error callbacks.
+            if (values.containsKey("error")) { toast("Cloudflare 授权未完成，请重新连接"); return; }
+            String code = values.get("code");
+            if (code == null || code.isEmpty()) throw new IllegalArgumentException("missing code");
+            String client = pending.getString("client"), verifier = pending.getString("verifier");
+            cloudflareBusy = true; refreshCloudflareUi(); cloudflareStatus.setText("正在完成 Cloudflare 授权…");
+            network.execute(() -> {
+                boolean success = false;
+                try {
+                    CloudflareClient.Tokens tokens = new CloudflareClient().exchange(client, code, verifier);
+                    secure.put("credentials", tokens.json().toString()); success = true;
+                } catch (Exception ignored) { /* No URLs, codes or tokens in logs. */ }
+                boolean connected = success;
+                handler.post(() -> {
+                    if (isDestroyed()) return;
+                    cloudflareBusy = false; refreshCloudflareUi();
+                    boolean proceed = preferences.getBoolean("cf_continue_update", false);
+                    preferences.edit().remove("cf_continue_update").apply();
+                    if (connected) {
+                        toast("Cloudflare 已连接");
+                        if (proceed && verified) updateCloudflare();
+                    } else cloudflareStatus.setText("授权未完成。请核对客户端类型、回调地址和权限后重新登录。");
+                });
+            });
+        } catch (Exception ignored) { toast("未接受该登录回调，请从 App 重新发起 Cloudflare 登录"); }
+    }
+
+    private void updateCloudflare() {
+        if (cloudflareBusy || !verified || token.isEmpty()) return;
+        if (!connected()) { beginCloudflareLogin(true); return; }
+        String candidate = token, targetAccount = account(), targetWorker = worker(), client = clientId();
+        cloudflareBusy = true; refreshCloudflareUi(); cloudflareStatus.setText("正在复查雷神登录并更新 " + targetWorker + "…");
+        network.execute(() -> {
+            LeigodClient.State fresh = new LeigodClient().check(candidate);
+            if (fresh != LeigodClient.State.VALID_PAUSED && fresh != LeigodClient.State.VALID_RUNNING) {
+                handler.post(() -> {
+                    if (isDestroyed()) return;
+                    cloudflareBusy = false; verified = false; refreshCloudflareUi();
+                    cloudflareStatus.setText(fresh == LeigodClient.State.LOGIN_REJECTED
+                            ? "雷神登录已失效，请重新登录后更新。云端 Secret 未修改。"
+                            : "暂时无法验证雷神登录，请检查网络后点“获取 / 检查”。云端 Secret 未修改。");
+                });
+                return;
+            }
+            String result;
+            try {
+                CloudflareClient api = new CloudflareClient();
+                CloudflareClient.Tokens credentials = CloudflareClient.Tokens.from(new JSONObject(secure.get("credentials")));
+                if (credentials.expiresAt <= System.currentTimeMillis() + 60000) {
+                    credentials = api.refresh(client, credentials.refresh); secure.put("credentials", credentials.json().toString());
+                }
+                try { api.update(credentials.access, targetAccount, targetWorker, candidate); }
+                catch (CloudflareClient.Failure failure) {
+                    if (failure.problem != CloudflareClient.Problem.AUTH) throw failure;
+                    credentials = api.refresh(client, credentials.refresh); secure.put("credentials", credentials.json().toString());
+                    api.update(credentials.access, targetAccount, targetWorker, candidate);
+                }
+                result = "已更新 Cloudflare · " + targetWorker + "\nLEIGOD_TOKENS 已保存并部署；定时设置和其他 Secret 保持不变。";
+            } catch (CloudflareClient.Failure failure) {
+                result = switch (failure.problem) {
+                    case AUTH -> { secure.remove("credentials"); yield "Cloudflare 授权已失效，请重新连接后更新。"; }
+                    case PERMISSION -> "没有更新权限。请确认授权包含 Workers Scripts Write，且选择了正确的账号。";
+                    case WORKER -> "未找到 Worker，请检查 Account ID 和 Worker 名称。";
+                    case NETWORK -> "暂时无法确认保存结果。请检查网络或云端设置后再试。";
+                    case API -> "Cloudflare 未确认保存成功，请检查连接设置后重试。";
+                };
+            } catch (Exception ignored) { result = "本机授权存储无法读取，请重新连接 Cloudflare。"; }
+            String message = result;
+            handler.post(() -> {
+                if (isDestroyed()) return;
+                cloudflareBusy = false; refreshCloudflareUi(); cloudflareStatus.setText(message);
+            });
+        });
     }
 
     private void openBrowser(String url) {

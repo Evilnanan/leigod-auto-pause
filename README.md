@@ -14,7 +14,7 @@
 
 ### 安卓 App：官网内登录后提取
 
-新增 [雷神 Token 助手 Android App](android/README.md)：在 App 内完成官网登录和验证码，自动检测并验证 token，点击复制后即可跳转到 GitHub 更新 Secret。支持 Android 8.0 及以上，源码及安装说明见链接。
+使用 [雷神 Cloudflare 助手 Android App](android/README.md)：在 App 内完成官网登录和验证码，首次在系统浏览器登录 Cloudflare 并授权后，即可一键更新 Worker 的 `LEIGOD_TOKENS`。也保留复制和打开 Cloudflare 设置的手动方式。支持 Android 8.0 及以上；不会执行暂停或恢复时长。
 
 ### 安卓手机：Edge / Chrome 书签提取
 
