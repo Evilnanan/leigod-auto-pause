@@ -28,10 +28,12 @@ public class CloudflareStorageTest {
         } finally { store.remove("test_record"); }
     }
     @Test public void unrequestedCallbackCannotConnectOrEnableSecretUpdates() {
-        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        Intent intent = new Intent(context, MainActivity.class).setData(Uri.parse(CloudflareConfig.CALLBACK + "?code=spoof&state=spoof"));
-        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(intent)) {
+        // The activity scrubs callback data. Deliver after launch so ActivityScenario's
+        // launch-intent matcher does not confuse that scrubbing with a missing lifecycle event.
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
             scenario.onActivity(activity -> {
+                activity.onNewIntent(new Intent(activity.getIntent())
+                        .setData(Uri.parse(CloudflareConfig.CALLBACK + "?code=spoof&state=spoof")));
                 assertFalse(((Button) activity.findViewById(R.id.update_cloudflare)).isEnabled());
                 assertNotNull(activity.findViewById(R.id.connect_cloudflare));
             });

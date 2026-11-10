@@ -557,7 +557,7 @@ public final class MainActivity extends Activity {
             } catch (CloudflareClient.Failure failure) {
                 result = switch (failure.problem) {
                     case AUTH -> { secure.remove("credentials"); yield "Cloudflare 授权已失效，请重新连接后更新。"; }
-                    case PERMISSION -> "没有更新权限。请确认授权包含 Workers Scripts Write，且选择了正确的账号。";
+                    case PERMISSION -> "没有更新权限。请确认客户端包含 Workers → Edit，且授权选择了正确的账号。";
                     case WORKER -> "未找到 Worker，请检查 Account ID 和 Worker 名称。";
                     case NETWORK -> "暂时无法确认保存结果。请检查网络或云端设置后再试。";
                     case API -> "Cloudflare 未确认保存成功，请检查连接设置后重试。";

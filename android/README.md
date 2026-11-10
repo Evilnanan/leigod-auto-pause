@@ -36,12 +36,12 @@ Cloudflare [支持原生应用的 Authorization Code + PKCE](https://developers.
 | Grant types | `authorization_code`、`refresh_token` |
 | Token endpoint authentication method | `none`，使用 PKCE S256 |
 | Redirect URL | `https://leigod-auto-pause.evilnanan.workers.dev/oauth/callback` |
-| Scopes | `Workers Scripts Write`，作为必需权限；刷新令牌对应的 `offline_access` 由支持 refresh_token 的客户端配置提供 |
+| Scopes | 最上面一组 **Workers → Edit**，作为必需权限；刷新令牌对应的 `offline_access` 由支持 refresh_token 的客户端配置提供 |
 | Visibility | `private`，只允许客户端所属账号的成员授权 |
 
 Cloudflare 客户端注册页要求 HTTP/HTTPS 回调，不能直接填 App 自定义协议。现有 Worker 提供 HTTPS 回调页与 `/.well-known/assetlinks.json`；正式签名 App 注册了对应 Android App Link，也保留用户手动点击的自定义协议回跳。回调页不交换或保存访问令牌，只把一次性授权码和 state 交回 App。
 
-创建后把 **Client ID** 填入 App 连接设置；这是公开标识。选择 `none` 的原生客户端不需要也不能在 App 中保存 Client Secret。Account ID 和 Worker 名称已预填。
+个人版已预填公开 **Client ID** `cd13467206cfc2cb1e53ec38da2c1ca5`。自行部署时，可把自己的 Client ID 填入 App 连接设置；这是公开标识。选择 `none` 的原生客户端不需要也不能在 App 中保存 Client Secret。Account ID 和 Worker 名称已预填。
 
 API / OAuth 权限通常覆盖被授权账号下的 Workers，不是只授予某个 Secret 的权限；App 自身把写入目标固定为指定 Worker 的 `LEIGOD_TOKENS`。可在 Cloudflare 的第三方授权管理中撤销。**断开本机连接** 仅删除手机保存的凭据，不撤销服务端授权，也不修改已有 Secret 或停止任务。
 

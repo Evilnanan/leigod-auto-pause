@@ -3,7 +3,7 @@ package com.evilnanan.leigodtoken;
 final class CloudflareConfig {
     static final String ACCOUNT = "88d3a93ffffffca40c129d87c9a298cb";
     static final String WORKER = "leigod-auto-pause";
-    static final String CLIENT_ID = "";
+    static final String CLIENT_ID = "cd13467206cfc2cb1e53ec38da2c1ca5";
     static final String CALLBACK = "https://leigod-auto-pause.evilnanan.workers.dev/oauth/callback";
     static final String APP_CALLBACK = "com.evilnanan.leigodtoken://oauth/callback";
     static final String AUTHORIZE = "https://dash.cloudflare.com/oauth2/auth";
