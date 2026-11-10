@@ -12,6 +12,10 @@
 
 ## 获取 account_token（每7天操作一次）
 
+### 安卓 App：官网内登录后提取
+
+使用 [雷神 Cloudflare 助手 Android App](android/README.md)：在 App 内完成官网登录和验证码，首次在系统浏览器登录 Cloudflare 并授权后，即可一键更新 Worker 的 `LEIGOD_TOKENS`。也保留复制和打开 Cloudflare 设置的手动方式。支持 Android 8.0 及以上；不会执行暂停或恢复时长。
+
 ### 安卓手机：Edge / Chrome 书签提取
 
 手机可通过书签读取 token，无需 F12。详见 [手机刷新指南](docs/mobile-refresh.md)：包含完整书签代码、官网登录入口、更新 Secret 和只读验证步骤。

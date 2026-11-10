@@ -1,0 +1,49 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.evilnanan.leigodtoken'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.evilnanan.leigodtoken'
+        minSdk 26
+        targetSdk 35
+        versionCode 4
+        versionName '0.2.1'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    signingConfigs {
+        release {
+            def path = System.getenv('ANDROID_KEYSTORE_PATH')
+            if (path && System.getenv('ANDROID_KEYSTORE_PASSWORD')) {
+                storeFile file(path)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias 'token-helper'
+                keyPassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (System.getenv('ANDROID_KEYSTORE_PATH') && System.getenv('ANDROID_KEYSTORE_PASSWORD')) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildFeatures { buildConfig true }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:3.14.9'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}
