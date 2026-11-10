@@ -90,7 +90,7 @@ Cloudflare 机器的出口 IP 与 GitHub 不同，部署后应进行上述真实
 3. 编辑 `LEIGOD_TOKENS`，保存并部署；多个账号保留全部 token，用英文逗号分隔。
 4. 手动运行 `/check`，或查看下一次检查结果。
 
-安卓 App v0.2.0 支持通过系统浏览器 OAuth + PKCE 授权 Cloudflare，一键更新单账号的 `LEIGOD_TOKENS`；初次需在 Cloudflare 创建私有 OAuth 客户端。安装包和设置步骤见 [安卓 App 分支说明](https://github.com/Evilnanan/leigod-auto-pause/blob/feat/android-token-app/android/README.md)。旧版 v0.1.1 仍可用于验证和复制，但其 GitHub 设置按钮指向旧保存位置。Token 有效期仍由雷神决定，迁移平台不会自动续期。
+安卓 App v0.2.1 支持通过系统浏览器 OAuth + PKCE 授权 Cloudflare，一键更新单账号的 `LEIGOD_TOKENS`；初次需在 Cloudflare 创建私有 OAuth 客户端。安装包和设置步骤见 [安卓 App 分支说明](https://github.com/Evilnanan/leigod-auto-pause/blob/feat/android-token-app/android/README.md)。旧版 v0.1.1 仍可用于验证和复制，但其 GitHub 设置按钮指向旧保存位置。Token 有效期仍由雷神决定，迁移平台不会自动续期。
 
 ### 安卓 OAuth 回调支持
 
