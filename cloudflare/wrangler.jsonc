@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "leigod-auto-pause",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "triggers": {
+    "crons": ["0 14 * * *", "0 17 * * *"]
+  },
+  "vars": {
+    "NOTIFY_CHANNEL": "auto"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
