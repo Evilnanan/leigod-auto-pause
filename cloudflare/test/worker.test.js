@@ -17,7 +17,7 @@ function fixture(responses) {
     sleep: async ms => { sleeps.push(ms); },
     fetchImpl: async (url, options) => {
       requests.push({ url, ...options, payload: JSON.parse(options.body) });
-      assert.equal(options.redirect, 'error');
+      assert.equal(options.redirect, 'manual');
       assert.ok(options.signal instanceof AbortSignal);
       assert.ok(responses.length, `Unexpected request: ${url}`);
       const response = responses.shift();
@@ -100,7 +100,33 @@ test('HTTP 403 is not mislabeled as expired login and is not repeatedly retried'
   const f = fixture([json({}, 403)]);
   await assert.rejects(trigger(f.worker, CHECK_CRON), /任务失败/);
   assert.equal(f.logs[0].accounts[0].kind, 'network');
+  assert.equal(f.logs[0].accounts[0].httpStatus, 403);
   assert.equal(f.requests.length, 1);
+});
+
+test('Leigod redirects fail without retry or forwarding account credentials', async () => {
+  const f = fixture([new Response(null, { status: 302, headers: { Location: 'https://other.example/' } })]);
+  await assert.rejects(trigger(f.worker, CHECK_CRON), /任务失败/);
+  assert.equal(f.requests.length, 1);
+  assert.equal(f.logs[0].accounts[0].httpStatus, 302);
+});
+
+test('notification redirects fail without forwarding the provider token', async () => {
+  const f = fixture([new Response(null, { status: 302, headers: { Location: 'https://other.example/' } })]);
+  const response = await f.worker.fetch(new Request('https://worker.test/notify-test', {
+    method: 'POST', headers: { Authorization: 'Bearer admin' },
+  }), { ADMIN_KEY: 'admin', PUSHPLUS_TOKEN: 'private-push-token' });
+  assert.equal(response.status, 503);
+  assert.equal(f.requests.length, 1);
+  assert.deepEqual(await response.json(), { notification: 'failed', details: { kind: 'http', code: 302 } });
+});
+
+test('provider errors expose only a numeric status and fixed category', async () => {
+  const f = fixture([json({ code: 600, msg: 'sensitive-provider-token' })]);
+  const response = await f.worker.fetch(new Request('https://worker.test/notify-test', {
+    method: 'POST', headers: { Authorization: 'Bearer admin' },
+  }), { ADMIN_KEY: 'admin', PUSHPLUS_TOKEN: 'private-push-token' });
+  assert.deepEqual(await response.json(), { notification: 'failed', details: { kind: 'provider', code: 600 } });
 });
 
 test('multiple accounts continue after failure and generate one combined alert', async () => {

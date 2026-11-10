@@ -35,11 +35,15 @@ Cron Triggers 不是硬实时服务；初次添加或修改触发器可能需要
 
 ### PushPlus 微信
 
-在 PushPlus 获取自己的推送 token，并按其页面完成微信绑定；然后在 Worker 的 **Variables and Secrets** 新增：
+在 PushPlus 获取自己的用户 token 或单独创建一个消息 token，按其页面完成微信绑定和实名认证；然后在 Worker 的 **Variables and Secrets** 新增：
 
 | 名称 | 类型 | 内容 |
 | --- | --- | --- |
 | `PUSHPLUS_TOKEN` | Secret | 自己的 PushPlus token |
+
+两种 token 均可用于发送消息，消息 token 可独立撤销，适合脚本使用。[官方说明](https://www.pushplus.plus/doc/help/token.html)
+
+通知失败时，受保护的 `/notify-test` 只返回固定错误类别及数字状态，不回传服务端原始消息或 token。`provider` / `905` 表示账号未实名认证，`903` 表示 token 无效。[返回码说明](https://www.pushplus.plus/doc/guide/code.html)
 
 ### Telegram
 
@@ -76,6 +80,8 @@ curl -X POST "$WORKER_URL/pause" -H "Authorization: Bearer $ADMIN_KEY"
 `/check` 返回 `ok:true` 即登录有效；`/pause` 返回 `paused` 或 `already_paused` 表示复查已暂停；`/notify-test` 应返回 `notification:sent`。HTTP 503 表示检查或通知失败，查看脱敏原因后处理。
 
 Cloudflare 机器的出口 IP 与 GitHub 不同，部署后应进行上述真实检查，以确认雷神接口没有访问限制。这里的自动化测试均使用虚拟 token，不会替代真实账号验证。
+
+对外请求使用 `redirect: 'manual'`，遇到重定向直接报错，防止凭据转发到其他地址。Workers 不支持 Fetch 标准中的 `redirect: 'error'`；该选项会在发出请求前抛出异常。[Workers Request 文档](https://developers.cloudflare.com/workers/runtime-apis/request/)
 
 ## 以后更新 Token
 

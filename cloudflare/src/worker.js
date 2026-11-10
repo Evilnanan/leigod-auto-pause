@@ -11,10 +11,18 @@ const MESSAGES = {
 };
 
 class TaskError extends Error {
-  constructor(kind, retryable = false) {
+  constructor(kind, retryable = false, httpStatus) {
     super(MESSAGES[kind]);
     this.kind = kind;
     this.retryable = retryable;
+    this.httpStatus = httpStatus;
+  }
+}
+
+class NotificationError extends Error {
+  constructor(kind, code) {
+    super('推送发送失败，请检查通知 Secret 和服务状态。');
+    this.details = { kind, ...(Number.isInteger(code) ? { code } : {}) };
   }
 }
 
@@ -26,14 +34,30 @@ function tokensFrom(env) {
 
 function safeFailure(error) {
   const kind = error instanceof TaskError ? error.kind : 'api';
-  return { ok: false, kind, message: MESSAGES[kind] };
+  return {
+    ok: false, kind, message: MESSAGES[kind],
+    ...(error instanceof TaskError && error.httpStatus ? { httpStatus: error.httpStatus } : {}),
+    ...(error instanceof TaskError && error.networkCause ? { networkCause: error.networkCause } : {}),
+  };
+}
+
+function networkFailure(error) {
+  const message = String(error?.message || '').toLowerCase();
+  const failure = new TaskError('network', true);
+  // Fixed categories only; never return or log the original exception.
+  failure.networkCause = /illegal invocation|incorrect this/.test(message) ? 'runtime_receiver'
+    : /timeout|timed out|aborted/.test(message) ? 'timeout'
+    : /dns|resolve|lookup/.test(message) ? 'dns'
+    : /tls|ssl|certificate/.test(message) ? 'tls'
+    : /connection/.test(message) ? 'connection' : 'unknown';
+  return failure;
 }
 
 function beijingTime(ms) {
   return new Date(ms + 8 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ') + ' 北京时间';
 }
 
-export function createWorker({ fetchImpl = globalThis.fetch, now = Date.now, sleep = ms => new Promise(r => setTimeout(r, ms)), log = value => console.log(value) } = {}) {
+export function createWorker({ fetchImpl = (...args) => globalThis.fetch(...args), now = Date.now, sleep = ms => new Promise(r => setTimeout(r, ms)), log = value => console.log(value) } = {}) {
   async function requestApi(path, token) {
     let response;
     try {
@@ -41,14 +65,15 @@ export function createWorker({ fetchImpl = globalThis.fetch, now = Date.now, sle
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json', Referer: 'https://www.leigod.com/' },
         body: JSON.stringify({ account_token: token, lang: 'zh_CN' }),
-        redirect: 'error',
+        // Workers supports only follow/manual. Never forward credentials on redirects.
+        redirect: 'manual',
         signal: AbortSignal.timeout(10000),
       });
-    } catch {
-      throw new TaskError('network', true);
+    } catch (error) {
+      throw networkFailure(error);
     }
-    if (response.status === 401) throw new TaskError('auth');
-    if (!response.ok) throw new TaskError('network', response.status === 429 || response.status >= 500);
+    if (response.status === 401) throw new TaskError('auth', false, response.status);
+    if (!response.ok) throw new TaskError('network', response.status === 429 || response.status >= 500, response.status);
     let result;
     try {
       const text = await response.text();
@@ -136,15 +161,17 @@ export function createWorker({ fetchImpl = globalThis.fetch, now = Date.now, sle
     try {
       const response = await fetchImpl(url, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-        redirect: 'error', signal: AbortSignal.timeout(7000),
+        redirect: 'manual', signal: AbortSignal.timeout(7000),
       });
-      if (!response.ok) throw new Error('notification');
+      if (!response.ok) throw new NotificationError('http', response.status);
       const data = await response.json();
-      if (channel === 'pushplus' ? Number(data.code) !== 200 : data.ok !== true) throw new Error('notification');
+      if (channel === 'pushplus' ? Number(data.code) !== 200 : data.ok !== true) {
+        throw new NotificationError('provider', channel === 'pushplus' ? Number(data.code) : undefined);
+      }
       return 'sent';
-    } catch {
+    } catch (error) {
       // Never propagate provider response text or an exception containing bot-token URLs.
-      throw new Error('推送发送失败，请检查通知 Secret 和服务状态。');
+      throw error instanceof NotificationError ? error : new NotificationError('connection');
     }
   }
 
@@ -160,7 +187,10 @@ export function createWorker({ fetchImpl = globalThis.fetch, now = Date.now, sle
         'Token 请保存到 Cloudflare Worker 的 LEIGOD_TOKENS Secret。',
       ].join('\n');
       try { report.notification = await notify(env, `雷神${report.mode === 'check' ? '登录检查' : '自动暂停'}失败`, text); }
-      catch { report.notification = 'failed'; }
+      catch (error) {
+        report.notification = 'failed';
+        if (error instanceof NotificationError) report.notificationDetails = error.details;
+      }
     }
     // Only fixed messages, account indexes and timestamps; no tokens, API bodies or raw exceptions.
     log(JSON.stringify({ event: 'leigod_task', ...report }));
@@ -204,7 +234,9 @@ export function createWorker({ fetchImpl = globalThis.fetch, now = Date.now, sle
         try {
           const result = await notify(env, '雷神 Worker 通知测试', '提醒渠道已连通。此测试不执行暂停或恢复操作。');
           return json({ notification: result }, result === 'sent' ? 200 : 503);
-        } catch { return json({ notification: 'failed' }, 503); }
+        } catch (error) {
+          return json({ notification: 'failed', ...(error instanceof NotificationError ? { details: error.details } : {}) }, 503);
+        }
       }
       const report = await finish(await run(path === '/check' ? 'check' : 'pause', env), env);
       return json(report, report.ok ? 200 : 503);
