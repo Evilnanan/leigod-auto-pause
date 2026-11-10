@@ -2,6 +2,12 @@
 
 利用雷神加速器 api（包含了登陆接口的签名认证逻辑）以及 Github 的 Actions 定时自动暂停时长
 
+## Cloudflare Workers 迁移选项
+
+如果 GitHub Actions 的定时任务延迟较大，可以改用 Workers Cron Triggers。已提供独立的 [Cloudflare 代码与一键部署指南](cloudflare/README.md)，保持北京时间 **22:00 检查 Token、01:00 自动暂停**。支持 PushPlus / Telegram 失败提醒。
+
+部署并验证 Workers 后再停用原 GitHub 定时任务。迁移后 token 保存到 Worker Secret；原来的安卓 App / 书签仍可用于提取 token。
+
 ## 重要更新：登录接口新增验证码
 
 雷神官网登录接口已添加 **极验 Geetest v4 验证码**，无法直接通过用户名密码自动登录。

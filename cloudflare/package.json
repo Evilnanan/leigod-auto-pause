@@ -1,0 +1,25 @@
+{
+  "name": "leigod-auto-pause-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "npm test && wrangler deploy",
+    "check": "wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "wrangler": "4.159.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "LEIGOD_TOKENS": {
+        "description": "从安卓 App 或雷神官网复制的 account_token，多个账号用英文逗号分隔。仅保存为 Secret。"
+      }
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
